@@ -1,0 +1,1021 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Career Pathways Map – Bristol Future Talent Partnership</title>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Nunito+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --pink:    #e4007c;
+            --cyan:    #00b5d8;
+            --yellow:  #f5c800;
+            --navy:    #0d1b2e;
+            --white:   #ffffff;
+            --offwhite:#f7f8fa;
+            --text:    #1a1a2e;
+            --muted:   #6b7a99;
+            --border:  rgba(0,0,0,0.08);
+            --t1: #e4007c;
+            --t2: #00b5d8;
+            --t3: #7b2fbe;
+            --t4: #f5c800;
+            --t5: #0d1b2e;
+        }
+
+        body {
+            background: transparent;
+            color: var(--text);
+            font-family: 'Nunito Sans', sans-serif;
+            min-height: 100vh;
+        }
+
+        /* ── LEGEND BAR ── */
+        .legend-bar {
+            background: transparent;
+            border-bottom: none;
+            padding: 1rem 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.6rem 1.2rem;
+            flex-wrap: wrap;
+        }
+
+        .legend-label {
+            font-family: 'Nunito', sans-serif;
+            font-size: 0.7rem;
+            font-weight: 700;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            margin-right: 0.25rem;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            font-size: 0.78rem;
+            font-weight: 600;
+            color: var(--text);
+        }
+
+        .legend-pip {
+            width: 12px; height: 12px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        /* ── LOADING / ERROR STATES ── */
+        .state-overlay {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+            background: white;
+            border-radius: 16px;
+            z-index: 10;
+            transition: opacity 0.4s;
+        }
+        .state-overlay.hidden { opacity: 0; pointer-events: none; }
+
+        .spinner {
+            width: 40px; height: 40px;
+            border: 3px solid rgba(228,0,124,0.15);
+            border-top-color: var(--pink);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .state-title {
+            font-family: 'Nunito', sans-serif;
+            font-weight: 800;
+            font-size: 1rem;
+            color: var(--navy);
+        }
+        .state-sub {
+            font-size: 0.8rem;
+            color: var(--muted);
+            max-width: 280px;
+            text-align: center;
+            line-height: 1.6;
+        }
+        .state-icon {
+            font-size: 2rem;
+        }
+        .retry-btn {
+            font-family: 'Nunito', sans-serif;
+            font-weight: 800;
+            font-size: 0.85rem;
+            padding: 0.6em 1.6em;
+            border-radius: 100px;
+            background: var(--pink);
+            color: white;
+            border: none;
+            cursor: pointer;
+            transition: transform 0.15s, box-shadow 0.15s;
+        }
+        .retry-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(228,0,124,0.3); }
+
+        /* ── CANVAS SECTION ── */
+        .map-section {
+            padding: 2rem 1.5rem 1rem;
+            max-width: 1200px;
+            margin: 0 auto;
+            position: relative;
+        }
+
+        @media (max-width: 768px) {
+            .map-section { padding: 1rem 0 0.5rem; }
+            #mapCanvas { border-radius: 0; }
+            .legend-bar { justify-content: center; gap: 0.6rem; padding: 0.75rem 1rem; }
+            .legend-item { font-size: 0.7rem; }
+            .hint-bar { flex-direction: column; gap: 0.4rem; text-align: center; }
+        }
+
+        .canvas-wrap {
+            position: relative;
+        }
+
+        #mapCanvas {
+            display: block;
+            width: 100%;
+            border-radius: 16px;
+            background: white;
+            box-shadow: 0 2px 24px rgba(0,0,0,0.08), 0 0 0 1px var(--border);
+            cursor: grab;
+            touch-action: none;
+        }
+        #mapCanvas:active { cursor: grabbing; }
+
+        .hint-bar {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 1.5rem;
+            padding: 0.75rem 0 0.25rem;
+            font-size: 0.75rem;
+            color: var(--muted);
+            font-weight: 600;
+        }
+        .hint-bar span { display: flex; align-items: center; gap: 0.35rem; }
+        .hint-bar svg { opacity: 0.5; }
+
+        /* ── LAST UPDATED BADGE ── */
+        .last-updated {
+            text-align: center;
+            font-size: 0.7rem;
+            color: var(--muted);
+            padding: 0.25rem 0 0.5rem;
+            font-weight: 600;
+        }
+        .last-updated a {
+            color: var(--cyan);
+            text-decoration: none;
+            font-weight: 700;
+        }
+        .last-updated a:hover { text-decoration: underline; }
+
+        /* ── OVERLAY + PANEL ── */
+        .overlay {
+            position: fixed; inset: 0;
+            background: rgba(13,27,46,0.55);
+            backdrop-filter: blur(3px);
+            z-index: 99;
+            opacity: 0; pointer-events: none;
+            transition: opacity 0.25s;
+        }
+        .overlay.open { opacity: 1; pointer-events: all; }
+
+        .info-panel {
+            position: fixed;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%) scale(0.94) translateY(16px);
+            width: min(500px, 93vw);
+            background: white;
+            border-radius: 18px;
+            overflow: hidden;
+            z-index: 100;
+            opacity: 0; pointer-events: none;
+            transition: opacity 0.25s cubic-bezier(.4,0,.2,1), transform 0.25s cubic-bezier(.4,0,.2,1);
+            box-shadow: 0 32px 80px rgba(13,27,46,0.22);
+        }
+        .info-panel.open {
+            opacity: 1; pointer-events: all;
+            transform: translate(-50%, -50%) scale(1) translateY(0);
+        }
+
+        .panel-top { padding: 1.75rem 1.75rem 1.25rem; position: relative; }
+
+        .panel-close {
+            position: absolute;
+            top: 1.1rem; right: 1.1rem;
+            width: 32px; height: 32px;
+            border-radius: 50%;
+            background: rgba(0,0,0,0.07);
+            border: none;
+            font-size: 1.1rem;
+            color: var(--muted);
+            cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            transition: background 0.15s;
+            line-height: 1;
+        }
+        .panel-close:hover { background: rgba(0,0,0,0.14); color: var(--text); }
+
+        .panel-tier-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            font-family: 'Nunito', sans-serif;
+            font-weight: 800;
+            font-size: 0.68rem;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            padding: 0.28em 0.9em;
+            border-radius: 100px;
+            margin-bottom: 0.9rem;
+        }
+
+        .panel-title {
+            font-family: 'Nunito', sans-serif;
+            font-weight: 900;
+            font-size: 1.55rem;
+            letter-spacing: -0.02em;
+            line-height: 1.15;
+            margin-bottom: 0.3rem;
+            padding-right: 2.5rem;
+        }
+
+        .panel-level {
+            font-size: 0.8rem;
+            font-weight: 700;
+            color: var(--muted);
+            margin-bottom: 1rem;
+            letter-spacing: 0.02em;
+        }
+
+        .panel-desc {
+            font-size: 0.9rem;
+            line-height: 1.75;
+            color: #3a3a5c;
+        }
+
+        .panel-bottom {
+            background: var(--offwhite);
+            border-top: 1px solid var(--border);
+            padding: 1.25rem 1.75rem 1.5rem;
+        }
+
+        .panel-connections-label {
+            font-family: 'Nunito', sans-serif;
+            font-weight: 800;
+            font-size: 0.68rem;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            color: var(--muted);
+            margin-bottom: 0.7rem;
+        }
+
+        .conn-pills { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+
+        .conn-pill {
+            font-family: 'Nunito', sans-serif;
+            font-weight: 700;
+            font-size: 0.78rem;
+            padding: 0.38em 1em;
+            border-radius: 100px;
+            border: 2px solid;
+            cursor: pointer;
+            transition: transform 0.12s, box-shadow 0.12s;
+            white-space: nowrap;
+        }
+        .conn-pill:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.12); }
+
+        .no-connections {
+            font-size: 0.82rem;
+            color: var(--muted);
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+
+<!-- LEGEND -->
+<div class="legend-bar">
+    <span class="legend-label">Tier:</span>
+    <div class="legend-item"><div class="legend-pip" style="background:#e4007c"></div>Entry Point</div>
+    <div class="legend-item"><div class="legend-pip" style="background:#00b5d8"></div>Foundation</div>
+    <div class="legend-item"><div class="legend-pip" style="background:#7b2fbe"></div>Intermediate</div>
+    <div class="legend-item"><div class="legend-pip" style="background:#e8a000"></div>Advanced</div>
+    <div class="legend-item"><div class="legend-pip" style="background:#0d1b2e"></div>Leadership</div>
+</div>
+
+<!-- MAP -->
+<div class="map-section">
+    <div class="canvas-wrap">
+        <canvas id="mapCanvas"></canvas>
+
+        <!-- Loading state -->
+        <div class="state-overlay" id="loadingState">
+            <div class="spinner"></div>
+            <div class="state-title">Loading map…</div>
+            <div class="state-sub">Fetching the latest data from Google Sheets</div>
+        </div>
+
+        <!-- Error state -->
+        <div class="state-overlay hidden" id="errorState">
+            <div class="state-icon">⚠️</div>
+            <div class="state-title">Couldn't load map data</div>
+            <div class="state-sub" id="errorMsg">There was a problem fetching the Google Sheet. Make sure it is published and the URL below is correct.</div>
+            <button class="retry-btn" onclick="loadData()">Try again</button>
+        </div>
+    </div>
+
+    <div class="last-updated" id="lastUpdated"></div>
+
+    <div class="hint-bar">
+        <span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            Click a node to explore
+        </span>
+        <span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 9l-3 3 3 3M9 5l3-3 3 3M15 19l-3 3-3-3M19 9l3 3-3 3"/></svg>
+            Drag to pan
+        </span>
+        <span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+            Scroll to zoom
+        </span>
+    </div>
+</div>
+
+<!-- OVERLAY + PANEL -->
+<div class="overlay" id="overlay"></div>
+
+<div class="info-panel" id="infoPanel">
+    <div class="panel-top">
+        <button class="panel-close" id="closeBtn">×</button>
+        <div class="panel-tier-badge" id="panelBadge"></div>
+        <div class="panel-title" id="panelTitle"></div>
+        <div class="panel-level" id="panelLevel"></div>
+        <p class="panel-desc" id="panelDesc"></p>
+    </div>
+    <div class="panel-bottom">
+        <div class="panel-connections-label">Where this leads →</div>
+        <div class="conn-pills" id="connList"></div>
+    </div>
+</div>
+
+<script>
+    // ─────────────────────────────────────────────────────────────────────────────
+    //  ⚙️  CONFIGURATION — update SHEET_CSV_URL with your published Google Sheet CSV URL
+    //
+    //  HOW TO GET THIS URL:
+    //  1. Open your Google Sheet
+    //  2. File → Share → Publish to web
+    //  3. Choose "Entire document" and "Comma-separated values (.csv)"
+    //  4. Click Publish and copy the link
+    //  5. Paste it below, replacing the placeholder URL
+    // ─────────────────────────────────────────────────────────────────────────────
+    const SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRcBcWZLvNWGewjyn4J6kC4KP6MxYgrtxjH-pkT14239zIgg-5T9j2oL5ldJbXL8nTexTSI0kNSLuUc/pub?gid=1992189657&single=true&output=csv';
+
+    // ─── BRAND COLOURS ───────────────────────────────────────────────────────────
+    const TIER_COLORS = {
+        entry:        '#e4007c',
+        foundation:   '#00b5d8',
+        intermediate: '#7b2fbe',
+        advanced:     '#e8a000',
+        leadership:   '#0d1b2e',
+    };
+
+    const TIER_LABELS = {
+        entry:        'Entry Point',
+        foundation:   'Foundation',
+        intermediate: 'Intermediate',
+        advanced:     'Advanced',
+        leadership:   'Leadership',
+    };
+
+    // Column order for layout (left → right)
+    const TIER_ORDER = ['entry', 'foundation', 'intermediate', 'advanced', 'leadership'];
+
+    const RADII = {
+        entry: 18, foundation: 16, intermediate: 16, advanced: 18, leadership: 22
+    };
+
+    // Fractional x-centre for each tier column (0 = left edge, 1 = right edge)
+    const TIER_FX = {
+        entry:        0.07,
+        foundation:   0.22,
+        intermediate: 0.42,
+        advanced:     0.63,
+        leadership:   0.88,
+    };
+
+    // ─── STATE ───────────────────────────────────────────────────────────────────
+    let nodes = [];
+    let positions = {};   // id → {x: fraction, y: fraction}
+    let loadedAt = null;
+
+    // ─── CSV PARSER ──────────────────────────────────────────────────────────────
+    // Handles quoted fields with commas inside them.
+    // Scans for the real header row (the one containing 'id') so it works even
+    // when banner/instruction rows sit above the data, as in the formatted sheet.
+    function parseCSV(text) {
+        const lines = text.trim().split('\n');
+        if (lines.length < 2) return [];
+
+        // Normalise a header string: lowercase, strip whitespace & BOM
+        const normalise = s => s.replace(/^\uFEFF/, '').trim().toLowerCase();
+
+        // Headers are on row 3 (index 2) — rows 1 and 2 are the banner/instruction strip
+        const headerLineIndex = 2;
+        const headers = parseCSVRow(lines[headerLineIndex]).map(normalise);
+
+        const rows = [];
+        for (let i = headerLineIndex + 1; i < lines.length; i++) {
+            const vals = parseCSVRow(lines[i]);
+            if (vals.every(v => !v.trim())) continue; // skip blank rows
+            const obj = {};
+            headers.forEach((h, idx) => { obj[h] = (vals[idx] || '').trim(); });
+            rows.push(obj);
+        }
+        return rows;
+    }
+
+    function parseCSVRow(line) {
+        const result = [];
+        let current = '';
+        let inQuotes = false;
+        for (let i = 0; i < line.length; i++) {
+            const ch = line[i];
+            if (ch === '"') {
+                if (inQuotes && line[i + 1] === '"') { current += '"'; i++; }
+                else { inQuotes = !inQuotes; }
+            } else if (ch === ',' && !inQuotes) {
+                result.push(current); current = '';
+            } else {
+                current += ch;
+            }
+        }
+        result.push(current);
+        return result;
+    }
+
+    // ─── BUILD NODES FROM CSV ROWS ───────────────────────────────────────────────
+    // Expected columns (case-insensitive):
+    //   id, label, tier, level, description, connections
+    //
+    // "connections" is a space- or semicolon-separated list of node IDs,
+    // e.g.  "n2 n3 n4"  or  "n2;n3;n4"
+    function buildNodes(rows) {
+        return rows
+            .filter(r => r.id && r.label && r.tier)
+            .map(r => {
+                const tierKey = r.tier.toLowerCase().replace(/\s+/g, '');
+                // Normalise common variations
+                const tierMap = {
+                    'entrypoint': 'entry', 'entry': 'entry',
+                    'foundation': 'foundation',
+                    'intermediate': 'intermediate',
+                    'advanced': 'advanced',
+                    'leadership': 'leadership',
+                };
+                const tier = tierMap[tierKey] || 'foundation';
+
+                const rawConns = r.connections || r.connection || '';
+                const connections = rawConns
+                    .split(/[\s;,]+/)
+                    .map(s => s.trim())
+                    .filter(Boolean);
+
+                return {
+                    id: r.id.trim(),
+                    label: r.label.replace(/\\n/g, '\n'),  // allow literal \n in sheet
+                    tier,
+                    level: r.level || '',
+                    desc: r.description || r.desc || '',
+                    connections,
+                };
+            });
+    }
+
+    // ─── AUTO LAYOUT ─────────────────────────────────────────────────────────────
+    // Slots each node into its tier column and spaces them evenly vertically.
+    // Returns positions as fractional coordinates {x, y} in [0,1].
+    function autoLayout(nodes) {
+        const byTier = {};
+        TIER_ORDER.forEach(t => { byTier[t] = []; });
+        nodes.forEach(n => {
+            if (byTier[n.tier]) byTier[n.tier].push(n.id);
+            else byTier['foundation'].push(n.id); // fallback
+        });
+
+        const pos = {};
+
+        // Fixed gap between nodes as a fraction of canvas height.
+        // Nodes are grouped together and centred vertically — so a column
+        // with 2 nodes sits neatly in the middle rather than top and bottom.
+        const NODE_GAP = 0.11;      // gap between node centres
+        const TOP_LABEL = 0.08;     // headroom for the column label
+        const CENTRE = 0.52;        // vertical centre point (slightly below midpoint looks better)
+
+        TIER_ORDER.forEach(tier => {
+            const ids = byTier[tier];
+            const fx  = TIER_FX[tier];
+            const count = ids.length;
+
+            // Total height of the group
+            const groupHeight = (count - 1) * NODE_GAP;
+            // Top of the group, clamped so it never goes above the label area
+            const groupTop = Math.max(TOP_LABEL, CENTRE - groupHeight / 2);
+
+            ids.forEach((id, i) => {
+                pos[id] = { fx, fy: groupTop + i * NODE_GAP };
+            });
+        });
+
+        return pos;
+    }
+
+    // ─── FETCH & INITIALISE ──────────────────────────────────────────────────────
+    async function loadData() {
+        showState('loading');
+
+        if (!SHEET_CSV_URL || SHEET_CSV_URL === 'YOUR_GOOGLE_SHEET_CSV_URL_HERE') {
+            showState('error', 'No Google Sheet URL has been set yet. Open the HTML file and update the SHEET_CSV_URL variable at the top of the script.');
+            return;
+        }
+
+        try {
+            const res = await fetch(SHEET_CSV_URL);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const text = await res.text();
+            const rows = parseCSV(text);
+
+            if (rows.length === 0) {
+                throw new Error('The sheet appears to be empty or the columns are not recognised.');
+            }
+
+            nodes = buildNodes(rows);
+
+            if (nodes.length === 0) {
+                throw new Error('No valid nodes found. Make sure your sheet has columns named: id, label, tier, level, description, connections');
+            }
+
+            positions = autoLayout(nodes);
+            loadedAt = new Date();
+            
+
+            initParticles();
+            showState('map');
+
+        } catch (err) {
+            console.error('Career map load error:', err);
+            showState('error', err.message || 'Unknown error. Check the browser console for details.');
+        }
+    }
+
+    function showState(state, msg) {
+        const loading = document.getElementById('loadingState');
+        const error   = document.getElementById('errorState');
+        const cvs     = document.getElementById('mapCanvas');
+
+        loading.classList.add('hidden');
+        error.classList.add('hidden');
+
+        if (state === 'loading') {
+            loading.classList.remove('hidden');
+            cvs.style.opacity = '0.3';
+        } else if (state === 'error') {
+            error.classList.remove('hidden');
+            if (msg) document.getElementById('errorMsg').textContent = msg;
+            cvs.style.opacity = '0.3';
+        } else {
+            cvs.style.opacity = '1';
+        }
+    }
+
+    // ─── CANVAS SETUP ────────────────────────────────────────────────────────────
+    const canvas = document.getElementById('mapCanvas');
+    const ctx = canvas.getContext('2d');
+    let W, H, dpr;
+    let scale = 1, offsetX = 0, offsetY = 0;
+    let isDragging = false, dragStart, dragOffset, _moved = false;
+    let hoveredNode = null;
+    let pulse = 0;
+
+    const MOBILE_VW = 2.4;
+    const MOBILE_VH = 1.4;
+    let isMobileLayout = false;
+
+    const particles = [];
+
+    function initParticles() {
+        particles.length = 0;
+        nodes.forEach(n => {
+            n.connections.forEach(cid => {
+                if (n.id < cid) {
+                    for (let i = 0; i < 2; i++) {
+                        particles.push({
+                            from: n.id, to: cid,
+                            t: Math.random(),
+                            speed: 0.002 + Math.random() * 0.002,
+                        });
+                    }
+                }
+            });
+        });
+    }
+
+    function resize() {
+        dpr = window.devicePixelRatio || 1;
+        const wrap = canvas.parentElement;
+        const isMobile = window.innerWidth < 768;
+        isMobileLayout = isMobile;
+
+        W = wrap.clientWidth || window.innerWidth;
+        H = isMobile
+            ? Math.round(window.innerHeight * 0.82)
+            : Math.max(600, Math.round(W * 0.65));
+        if (!H || H < 300) H = window.innerHeight * 0.8;
+
+        canvas.width  = W * dpr;
+        canvas.height = H * dpr;
+        canvas.style.width  = W + 'px';
+        canvas.style.height = H + 'px';
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+        // Set the state overlay to match canvas height
+        document.getElementById('loadingState').style.height = H + 'px';
+        document.getElementById('errorState').style.height   = H + 'px';
+
+        if (isMobile) {
+            scale = 1;
+            offsetX = W / 2 - 0.475 * W * MOBILE_VW;
+            offsetY = 30 - 0.12 * H * MOBILE_VH;
+        } else {
+            // Reset to default view on resize
+            scale = 1;
+            offsetX = 0;
+            offsetY = 0;
+        }
+
+        if (nodes.length > 0) initParticles();
+    }
+
+    function nodeXY(id) {
+        const p = positions[id];
+        if (!p) return { x: -9999, y: -9999 };
+        const vw = isMobileLayout ? W * MOBILE_VW : W;
+        const vh = isMobileLayout ? H * MOBILE_VH : H;
+        return {
+            x: p.fx * vw * scale + offsetX,
+            y: p.fy * vh * scale + offsetY,
+        };
+    }
+
+    function hitTest(sx, sy) {
+        for (const n of nodes) {
+            const p = nodeXY(n.id);
+            const r = (RADII[n.tier] + 10) * Math.max(0.5, scale);
+            if (Math.hypot(sx - p.x, sy - p.y) < r) return n;
+        }
+        return null;
+    }
+
+    // ─── DRAW ─────────────────────────────────────────────────────────────────────
+    function draw() {
+        ctx.clearRect(0, 0, W, H);
+        pulse += 0.022;
+
+        if (nodes.length === 0) {
+            requestAnimationFrame(draw);
+            return;
+        }
+
+        // Column guide lines
+        TIER_ORDER.forEach(tier => {
+            const x = TIER_FX[tier] * (isMobileLayout ? W * MOBILE_VW : W) * scale + offsetX;
+            ctx.beginPath();
+            ctx.moveTo(x, 0); ctx.lineTo(x, H);
+            ctx.strokeStyle = 'rgba(0,0,0,0.03)';
+            ctx.lineWidth = 1;
+            ctx.setLineDash([4, 8]);
+            ctx.stroke();
+            ctx.setLineDash([]);
+        });
+
+        // Column labels
+        TIER_ORDER.forEach(tier => {
+            const x = TIER_FX[tier] * (isMobileLayout ? W * MOBILE_VW : W) * scale + offsetX;
+            ctx.font = `700 ${Math.max(9, 11 * scale)}px 'Nunito', sans-serif`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'top';
+            ctx.fillStyle = 'rgba(0,0,0,0.12)';
+            ctx.fillText(TIER_LABELS[tier].toUpperCase(), x, 10);
+        });
+
+        // Edges
+        const nodeMap = new Map(nodes.map(n => [n.id, n]));
+
+        nodes.forEach(n => {
+            n.connections.forEach(cid => {
+                if (!nodeMap.has(cid)) return;
+                if (n.id < cid) {
+                    const a = nodeXY(n.id), b = nodeXY(cid);
+                    const isHot = hoveredNode && (hoveredNode.id === n.id || hoveredNode.id === cid);
+                    const ca = TIER_COLORS[n.tier];
+                    const cb = TIER_COLORS[nodeMap.get(cid).tier];
+
+                    ctx.beginPath();
+                    ctx.moveTo(a.x, a.y);
+                    const cx = (a.x + b.x) / 2;
+                    const cy = (a.y + b.y) / 2 - 20 * scale;
+                    ctx.quadraticCurveTo(cx, cy, b.x, b.y);
+
+                    if (isHot) {
+                        const g = ctx.createLinearGradient(a.x, a.y, b.x, b.y);
+                        g.addColorStop(0, ca + 'cc');
+                        g.addColorStop(1, cb + 'cc');
+                        ctx.strokeStyle = g;
+                        ctx.lineWidth = 2.5;
+                        ctx.setLineDash([]);
+                    } else {
+                        ctx.strokeStyle = 'rgba(0,0,0,0.08)';
+                        ctx.lineWidth = 1.5;
+                        ctx.setLineDash([6, 8]);
+                    }
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+                }
+            });
+        });
+
+        // Particles
+        particles.forEach(p => {
+            p.t = (p.t + p.speed) % 1;
+            if (!nodeMap.has(p.from) || !nodeMap.has(p.to)) return;
+            const a = nodeXY(p.from), b = nodeXY(p.to);
+            const t = p.t;
+            const cx = (a.x + b.x) / 2;
+            const cy = (a.y + b.y) / 2 - 20 * scale;
+            const x = (1-t)*(1-t)*a.x + 2*(1-t)*t*cx + t*t*b.x;
+            const y = (1-t)*(1-t)*a.y + 2*(1-t)*t*cy + t*t*b.y;
+            const alpha = Math.sin(t * Math.PI) * 0.55;
+            const col = TIER_COLORS[nodeMap.get(p.from).tier];
+            ctx.beginPath();
+            ctx.arc(x, y, 2.5 * Math.max(0.6, scale), 0, Math.PI * 2);
+            ctx.fillStyle = col + Math.round(alpha * 255).toString(16).padStart(2, '0');
+            ctx.fill();
+        });
+
+        // Nodes
+        nodes.forEach(n => {
+            const { x, y } = nodeXY(n.id);
+            if (x < -50 || x > W + 50 || y < -50 || y > H + 50) return; // skip off-screen
+            const r = RADII[n.tier] * Math.max(0.55, scale);
+            const color = TIER_COLORS[n.tier];
+            const isHovered   = hoveredNode?.id === n.id;
+            const isConnected = hoveredNode?.connections.includes(n.id);
+            const wobble = Math.sin(pulse + n.id.charCodeAt(1) * 0.9) * 1.5;
+
+            // Glow
+            const glowR = r * (isHovered ? 4.5 : 3);
+            const glow = ctx.createRadialGradient(x, y, 0, x, y, glowR);
+            glow.addColorStop(0, color + (isHovered ? '45' : '22'));
+            glow.addColorStop(1, 'transparent');
+            ctx.beginPath(); ctx.arc(x, y, glowR, 0, Math.PI * 2);
+            ctx.fillStyle = glow; ctx.fill();
+
+            // Outer pulse ring
+            ctx.beginPath();
+            ctx.arc(x, y, r + 5 + wobble, 0, Math.PI * 2);
+            ctx.strokeStyle = color + (isHovered ? '55' : '1a');
+            ctx.lineWidth = isHovered ? 2 : 1;
+            ctx.stroke();
+
+            // Connected ring
+            if (isConnected) {
+                ctx.beginPath();
+                ctx.arc(x, y, r + 8, 0, Math.PI * 2);
+                ctx.strokeStyle = color + '44';
+                ctx.lineWidth = 1.5;
+                ctx.setLineDash([3, 4]);
+                ctx.stroke();
+                ctx.setLineDash([]);
+            }
+
+            // Drop shadow + core
+            ctx.shadowColor = color + '55';
+            ctx.shadowBlur = isHovered ? 22 : 10;
+
+            ctx.beginPath();
+            ctx.arc(x, y, r, 0, Math.PI * 2);
+            const coreG = ctx.createRadialGradient(x - r*0.3, y - r*0.3, r*0.05, x, y, r);
+            coreG.addColorStop(0, lighten(color, 30));
+            coreG.addColorStop(0.6, color);
+            coreG.addColorStop(1, darken(color, 15));
+            ctx.fillStyle = coreG;
+            ctx.fill();
+            ctx.shadowBlur = 0;
+
+            // White ring
+            ctx.beginPath();
+            ctx.arc(x, y, r, 0, Math.PI * 2);
+            ctx.strokeStyle = isHovered ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.5)';
+            ctx.lineWidth = isHovered ? 2.5 : 1.5;
+            ctx.stroke();
+
+            // Specular highlight
+            ctx.beginPath();
+            ctx.arc(x - r*0.3, y - r*0.3, r*0.25, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(255,255,255,0.45)';
+            ctx.fill();
+
+            // Label
+            const baseSize = window.innerWidth < 768 ? 10 : 9.5;
+            const fs = Math.max(8, Math.min(12, baseSize * scale));
+            ctx.font = `700 ${fs}px 'Nunito Sans', sans-serif`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'top';
+            const lines = n.label.split('\n');
+            const ly = y + r + 5;
+            lines.forEach((line, i) => {
+                ctx.fillStyle = 'rgba(255,255,255,0.7)';
+                ctx.fillText(line, x+0.5, ly + i*(fs+2)+0.5);
+                ctx.fillStyle = isHovered ? color : 'rgba(26,26,46,0.75)';
+                ctx.fillText(line, x, ly + i*(fs+2));
+            });
+        });
+
+        requestAnimationFrame(draw);
+    }
+
+    function lighten(hex, amt) {
+        const n = parseInt(hex.slice(1), 16);
+        return `rgb(${Math.min(255,(n>>16)+amt)},${Math.min(255,((n>>8)&0xff)+amt)},${Math.min(255,(n&0xff)+amt)})`;
+    }
+    function darken(hex, amt) {
+        const n = parseInt(hex.slice(1), 16);
+        return `rgb(${Math.max(0,(n>>16)-amt)},${Math.max(0,((n>>8)&0xff)-amt)},${Math.max(0,(n&0xff)-amt)})`;
+    }
+
+    // ─── INTERACTION ─────────────────────────────────────────────────────────────
+    canvas.addEventListener('mousemove', e => {
+        const r = canvas.getBoundingClientRect();
+        const sx = e.clientX - r.left, sy = e.clientY - r.top;
+        if (isDragging) {
+            _moved = true;
+            offsetX = dragOffset.x + (e.clientX - dragStart.x);
+            offsetY = dragOffset.y + (e.clientY - dragStart.y);
+            return;
+        }
+        hoveredNode = hitTest(sx, sy);
+        canvas.style.cursor = hoveredNode ? 'pointer' : 'grab';
+    });
+
+    canvas.addEventListener('mousedown', e => {
+        isDragging = true; _moved = false;
+        dragStart  = { x: e.clientX, y: e.clientY };
+        dragOffset = { x: offsetX, y: offsetY };
+    });
+
+    canvas.addEventListener('mouseup', e => {
+        isDragging = false;
+        if (!_moved) {
+            const r = canvas.getBoundingClientRect();
+            const hit = hitTest(e.clientX - r.left, e.clientY - r.top);
+            if (hit) openPanel(hit);
+        }
+        canvas.style.cursor = hoveredNode ? 'pointer' : 'grab';
+    });
+
+    canvas.addEventListener('mouseleave', () => { isDragging = false; });
+
+    canvas.addEventListener('wheel', e => {
+        e.preventDefault();
+        const r = canvas.getBoundingClientRect();
+        const mx = e.clientX - r.left, my = e.clientY - r.top;
+        const d = e.deltaY > 0 ? 0.88 : 1.13;
+        const ns = Math.min(4, Math.max(0.3, scale * d));
+        offsetX = mx - (mx - offsetX) * (ns / scale);
+        offsetY = my - (my - offsetY) * (ns / scale);
+        scale = ns;
+    }, { passive: false });
+
+    let _tMoved = false;
+    let initialDistance = null;
+    let initialScale = 1;
+
+    canvas.addEventListener('touchstart', e => {
+        e.preventDefault();
+        if (e.touches.length === 1) {
+            isDragging = true; _tMoved = false;
+            dragStart  = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+            dragOffset = { x: offsetX, y: offsetY };
+        }
+        if (e.touches.length === 2) {
+            initialDistance = Math.hypot(
+                e.touches[0].clientX - e.touches[1].clientX,
+                e.touches[0].clientY - e.touches[1].clientY
+            );
+            initialScale = scale;
+            isDragging = false;
+        }
+    }, { passive: false });
+
+    canvas.addEventListener('touchmove', e => {
+        e.preventDefault();
+        if (e.touches.length === 1 && isDragging) {
+            _tMoved = true;
+            offsetX = dragOffset.x + (e.touches[0].clientX - dragStart.x);
+            offsetY = dragOffset.y + (e.touches[0].clientY - dragStart.y);
+        }
+        if (e.touches.length === 2 && initialDistance) {
+            const newDist = Math.hypot(
+                e.touches[0].clientX - e.touches[1].clientX,
+                e.touches[0].clientY - e.touches[1].clientY
+            );
+            scale = Math.min(4, Math.max(0.3, initialScale * (newDist / initialDistance)));
+        }
+    }, { passive: false });
+
+    canvas.addEventListener('touchend', e => {
+        e.preventDefault();
+        if (!_tMoved && e.changedTouches.length === 1) {
+            const t = e.changedTouches[0];
+            const r = canvas.getBoundingClientRect();
+            const hit = hitTest(t.clientX - r.left, t.clientY - r.top);
+            if (hit) openPanel(hit);
+        }
+        isDragging = false;
+        initialDistance = null;
+    }, { passive: false });
+
+    // ─── PANEL ───────────────────────────────────────────────────────────────────
+    const panel   = document.getElementById('infoPanel');
+    const overlay = document.getElementById('overlay');
+    const nodeMap = () => new Map(nodes.map(n => [n.id, n]));
+
+    function openPanel(node) {
+        const color = TIER_COLORS[node.tier];
+        const badge = document.getElementById('panelBadge');
+        badge.textContent = TIER_LABELS[node.tier];
+        badge.style.cssText = `background:${color}18;color:${color};border:2px solid ${color}44`;
+
+        document.getElementById('panelTitle').textContent = node.label.replace(/\n/g, ' ');
+        document.getElementById('panelLevel').textContent = node.level;
+        document.getElementById('panelDesc').textContent  = node.desc;
+
+        const connList = document.getElementById('connList');
+        connList.innerHTML = '';
+        const map = nodeMap();
+        const validConns = node.connections.filter(cid => map.has(cid));
+
+        if (validConns.length === 0) {
+            const empty = document.createElement('span');
+            empty.className = 'no-connections';
+            empty.textContent = 'No onward connections listed.';
+            connList.appendChild(empty);
+        } else {
+            validConns.forEach(cid => {
+                const cn = map.get(cid);
+                const cc = TIER_COLORS[cn.tier];
+                const pill = document.createElement('span');
+                pill.className = 'conn-pill';
+                pill.textContent = cn.label.replace(/\n/g, ' ');
+                pill.style.cssText = `color:${cc};background:${cc}14;border-color:${cc}55`;
+                pill.addEventListener('click', () => openPanel(cn));
+                connList.appendChild(pill);
+            });
+        }
+
+        panel.classList.add('open');
+        overlay.classList.add('open');
+    }
+
+    function closePanel() {
+        panel.classList.remove('open');
+        overlay.classList.remove('open');
+    }
+
+    document.getElementById('closeBtn').addEventListener('click', closePanel);
+    overlay.addEventListener('click', closePanel);
+
+    // ─── INIT ─────────────────────────────────────────────────────────────────────
+    window.addEventListener('resize', resize);
+    resize();
+    draw();
+    loadData();
+</script>
+</body>
+</html>
