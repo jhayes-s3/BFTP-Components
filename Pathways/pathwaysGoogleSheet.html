@@ -422,7 +422,8 @@
 
     // ─── STATE ───────────────────────────────────────────────────────────────────
     let nodes = [];
-    let positions = {};   // id → {x: fraction, y: fraction}
+    let edges = [];
+    let positions = {};
     let loadedAt = null;
 
     // ─── CSV PARSER ──────────────────────────────────────────────────────────────
@@ -508,6 +509,24 @@
             });
     }
 
+
+    function buildEdges(nodes) {
+        const nm = new Map(nodes.map(n => [n.id, n]));
+        const seen = new Set();
+        const result = [];
+        nodes.forEach(n => {
+            n.connections.forEach(cid => {
+                if (!nm.has(cid)) return;
+                const key = [n.id, cid].sort().join('|');
+                if (seen.has(key)) return;
+                seen.add(key);
+                result.push({ from: n.id, to: cid });
+            });
+        });
+        return result;
+    }
+    
+    
     // ─── AUTO LAYOUT ─────────────────────────────────────────────────────────────
     // Slots each node into its tier column and spaces them evenly vertically.
     // Returns positions as fractional coordinates {x, y} in [0,1].
@@ -572,6 +591,7 @@
             }
 
             positions = autoLayout(nodes);
+            edges = buildEdges(nodes);
             loadedAt = new Date();
             
 
@@ -621,18 +641,10 @@
 
     function initParticles() {
         particles.length = 0;
-        nodes.forEach(n => {
-            n.connections.forEach(cid => {
-                if (n.id < cid) {
-                    for (let i = 0; i < 2; i++) {
-                        particles.push({
-                            from: n.id, to: cid,
-                            t: Math.random(),
-                            speed: 0.002 + Math.random() * 0.002,
-                        });
-                    }
-                }
-            });
+        edges.forEach(e => {
+            for (let i = 0; i < 2; i++) {
+                particles.push({ from: e.from, to: e.to, t: Math.random(), speed: 0.002 + Math.random() * 0.002 });
+            }
         });
     }
 
@@ -727,37 +739,24 @@
         // Edges
         const nodeMap = new Map(nodes.map(n => [n.id, n]));
 
-        nodes.forEach(n => {
-            n.connections.forEach(cid => {
-                if (!nodeMap.has(cid)) return;
-                if (n.id < cid) {
-                    const a = nodeXY(n.id), b = nodeXY(cid);
-                    const isHot = hoveredNode && (hoveredNode.id === n.id || hoveredNode.id === cid);
-                    const ca = TIER_COLORS[n.tier];
-                    const cb = TIER_COLORS[nodeMap.get(cid).tier];
-
-                    ctx.beginPath();
-                    ctx.moveTo(a.x, a.y);
-                    const cx = (a.x + b.x) / 2;
-                    const cy = (a.y + b.y) / 2 - 20 * scale;
-                    ctx.quadraticCurveTo(cx, cy, b.x, b.y);
-
-                    if (isHot) {
-                        const g = ctx.createLinearGradient(a.x, a.y, b.x, b.y);
-                        g.addColorStop(0, ca + 'cc');
-                        g.addColorStop(1, cb + 'cc');
-                        ctx.strokeStyle = g;
-                        ctx.lineWidth = 2.5;
-                        ctx.setLineDash([]);
-                    } else {
-                        ctx.strokeStyle = 'rgba(0,0,0,0.08)';
-                        ctx.lineWidth = 1.5;
-                        ctx.setLineDash([6, 8]);
-                    }
-                    ctx.stroke();
-                    ctx.setLineDash([]);
-                }
-            });
+// Edges
+        edges.forEach(e => {
+            const nFrom = nodeMap.get(e.from), nTo = nodeMap.get(e.to);
+            if (!nFrom || !nTo) return;
+            const a = nodeXY(e.from), b = nodeXY(e.to);
+            const isHot = hoveredNode && (hoveredNode.id === e.from || hoveredNode.id === e.to);
+            ctx.beginPath();
+            ctx.moveTo(a.x, a.y);
+            ctx.quadraticCurveTo((a.x+b.x)/2, (a.y+b.y)/2 - 20*scale, b.x, b.y);
+            if (isHot) {
+                const g = ctx.createLinearGradient(a.x, a.y, b.x, b.y);
+                g.addColorStop(0, TIER_COLORS[nFrom.tier] + 'cc');
+                g.addColorStop(1, TIER_COLORS[nTo.tier] + 'cc');
+                ctx.strokeStyle = g; ctx.lineWidth = 2.5; ctx.setLineDash([]);
+            } else {
+                ctx.strokeStyle = 'rgba(0,0,0,0.08)'; ctx.lineWidth = 1.5; ctx.setLineDash([6, 8]);
+            }
+            ctx.stroke(); ctx.setLineDash([]);
         });
 
         // Particles
