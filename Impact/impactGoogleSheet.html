@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BFTP Impact Stats</title>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Nunito+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --pink:   #e4007c;
+            --cyan:   #00b5d8;
+            --purple: #7b2fbe;
+            --amber:  #e8a000;
+            --navy:   #0d1b2e;
+            --white:  #ffffff;
+            --offwhite: #f7f8fa;
+            --text:   #1a1a2e;
+            --muted:  #6b7a99;
+            --border: rgba(0,0,0,0.07);
+        }
+
+        body {
+            background: transparent;
+            font-family: 'Nunito Sans', sans-serif;
+            color: var(--text);
+        }
+
+        /* ── SECTION WRAPPER ── */
+        .stats-section {
+            padding: 3rem 1.5rem;
+            max-width: 1100px;
+            margin: 0 auto;
+        }
+
+        .stats-eyebrow {
+            text-align: center;
+            font-family: 'Nunito', sans-serif;
+            font-weight: 800;
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.18em;
+            color: var(--pink);
+            margin-bottom: 0.75rem;
+            opacity: 0;
+            transform: translateY(12px);
+            transition: opacity 0.5s ease, transform 0.5s ease;
+        }
+
+        .stats-heading {
+            text-align: center;
+            font-family: 'Nunito', sans-serif;
+            font-weight: 900;
+            font-size: clamp(1.3rem, 3vw, 2rem);
+            letter-spacing: -0.02em;
+            line-height: 1.15;
+            color: var(--navy);
+            margin-bottom: 2rem;
+            opacity: 0;
+            transform: translateY(16px);
+            transition: opacity 0.55s ease 0.1s, transform 0.55s ease 0.1s;
+        }
+
+        .stats-heading em {
+            font-style: normal;
+            background: linear-gradient(135deg, var(--pink), var(--cyan));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        /* animated-in state */
+        .stats-section.visible .stats-eyebrow,
+        .stats-section.visible .stats-heading {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* ── GRID ── */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1rem;
+        }
+
+        @media (max-width: 700px) {
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .stats-section {
+                padding: 2.5rem 1rem;
+            }
+        }
+
+        /* ── CARD BASE ── */
+        .stat-card {
+            background: var(--white);
+            border-radius: 20px;
+            padding: 1.5rem 1.25rem;
+            box-shadow: 0 2px 24px rgba(0,0,0,0.07), 0 0 0 1px var(--border);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            gap: 0.75rem;
+            opacity: 0;
+            transform: translateY(28px) scale(0.97);
+            transition: opacity 0.55s ease, transform 0.55s ease, box-shadow 0.2s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 4px;
+            border-radius: 20px 20px 0 0;
+        }
+
+        .stat-card.c-pink::before  { background: var(--pink); }
+        .stat-card.c-cyan::before  { background: var(--cyan); }
+        .stat-card.c-purple::before { background: var(--purple); }
+        .stat-card.c-amber::before  { background: var(--amber); }
+
+        .stat-card:hover {
+            box-shadow: 0 8px 40px rgba(0,0,0,0.12), 0 0 0 1px var(--border);
+            transform: translateY(-3px) scale(1) !important;
+        }
+
+        .stats-section.visible .stat-card:nth-child(1) { opacity:1; transform:translateY(0) scale(1); transition-delay: 0.15s; }
+        .stats-section.visible .stat-card:nth-child(2) { opacity:1; transform:translateY(0) scale(1); transition-delay: 0.28s; }
+        .stats-section.visible .stat-card:nth-child(3) { opacity:1; transform:translateY(0) scale(1); transition-delay: 0.41s; }
+        .stats-section.visible .stat-card:nth-child(4) { opacity:1; transform:translateY(0) scale(1); transition-delay: 0.54s; }
+
+        /* ── CARD LABEL ── */
+        .stat-label {
+            font-family: 'Nunito', sans-serif;
+            font-weight: 700;
+            font-size: 0.68rem;
+            text-transform: uppercase;
+            letter-spacing: 0.13em;
+            padding: 0.28em 0.9em;
+            border-radius: 100px;
+        }
+        .c-pink  .stat-label { background: #fce4f1; color: var(--pink); }
+        .c-cyan  .stat-label { background: #ddf5fb; color: #0094b3; }
+        .c-purple .stat-label { background: #ede4f8; color: var(--purple); }
+        .c-amber .stat-label { background: #fdf0d5; color: #c07a00; }
+
+        /* ── CARD DESC ── */
+        .stat-desc {
+            font-size: 0.8rem;
+            line-height: 1.65;
+            color: var(--muted);
+            max-width: 18ch;
+        }
+
+        /* ════════════════════════════════════
+           CARD 1 — PIE CHART
+        ════════════════════════════════════ */
+        .pie-wrap {
+            position: relative;
+            width: 90px; height: 90px;
+            flex-shrink: 0;
+        }
+
+        .pie-svg {
+            width: 90px; height: 90px;
+            transform: rotate(-90deg);
+        }
+
+        .pie-track {
+            fill: none;
+            stroke: #f0e4f7;
+            stroke-width: 14;
+        }
+
+        .pie-fill {
+            fill: none;
+            stroke: var(--pink);
+            stroke-width: 14;
+            stroke-linecap: round;
+            stroke-dasharray: 232.5;
+            stroke-dashoffset: 232.5; /* will be updated via JS */
+            transition: stroke-dashoffset 1.6s cubic-bezier(0.22, 1, 0.36, 1) 0.3s;
+        }
+
+        .pie-center {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .pie-pct {
+            font-family: 'Nunito', sans-serif;
+            font-weight: 900;
+            font-size: 1.4rem;
+            line-height: 1;
+            color: var(--pink);
+            letter-spacing: -0.03em;
+        }
+
+        .pie-pct-sign {
+            font-size: 1rem;
+            vertical-align: super;
+        }
+
+        /* ════════════════════════════════════
+           CARD 2 — COUNTER
+        ════════════════════════════════════ */
+        .counter-display {
+            display: flex;
+            align-items: baseline;
+            gap: 0.15rem;
+            line-height: 1;
+        }
+
+        .counter-num {
+            font-family: 'Nunito', sans-serif;
+            font-weight: 900;
+            font-size: 3rem;
+            letter-spacing: -0.04em;
+            color: var(--cyan);
+            font-variant-numeric: tabular-nums;
+        }
+
+        .counter-plus {
+            font-family: 'Nunito', sans-serif;
+            font-weight: 900;
+            font-size: 1.6rem;
+            color: var(--cyan);
+            opacity: 0;
+            transition: opacity 0.4s ease 1.6s;
+        }
+
+        .stats-section.visible .counter-plus {
+            opacity: 1;
+        }
+
+        /* ════════════════════════════════════
+           CARD 3 — DOT GRID (dynamic count)
+        ════════════════════════════════════ */
+        .dot-grid {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 5px;
+            padding: 0.1rem;
+        }
+
+        .dot-grid-dot {
+            width: 12px; height: 12px;
+            border-radius: 50%;
+            background: #ede4f8;
+            transition: background 0.3s ease, transform 0.3s ease;
+            transform: scale(0);
+        }
+
+        .stats-section.visible .dot-grid-dot.lit {
+            background: var(--purple);
+        }
+
+        .dot-big-num {
+            font-family: 'Nunito', sans-serif;
+            font-weight: 900;
+            font-size: 2.8rem;
+            letter-spacing: -0.04em;
+            color: var(--purple);
+            line-height: 1;
+        }
+
+        /* ════════════════════════════════════
+           CARD 4 — BAR CHART (static)
+        ════════════════════════════════════ */
+        .bar-chart {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 7px;
+        }
+
+        .bar-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .bar-icon {
+            font-size: 0.9rem;
+            flex-shrink: 0;
+            width: 20px;
+            text-align: center;
+        }
+
+        .bar-track {
+            flex: 1;
+            height: 10px;
+            background: #fdf0d5;
+            border-radius: 100px;
+            overflow: hidden;
+        }
+
+        .bar-fill {
+            height: 100%;
+            border-radius: 100px;
+            background: var(--amber);
+            width: 0%;
+            transition: width 1.2s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+
+        .bar-big-num {
+            font-family: 'Nunito', sans-serif;
+            font-weight: 900;
+            font-size: 2.8rem;
+            letter-spacing: -0.04em;
+            color: var(--amber);
+            line-height: 1;
+        }
+    </style>
+</head>
+<body>
+
+<section class="stats-section" id="statsSection">
+    <p class="stats-eyebrow"></p>
+    <h2 class="stats-heading">
+        <span class="heading-before"></span>
+        <em class="heading-em"></em>
+        <span class="heading-after"></span>
+    </h2>
+
+    <div class="stats-grid">
+        <!-- CARD 1: pink pie chart -->
+        <div class="stat-card c-pink">
+            <span class="stat-label"></span>
+            <div class="pie-wrap">
+                <svg class="pie-svg" viewBox="0 0 90 90">
+                    <circle class="pie-track" cx="45" cy="45" r="37"/>
+                    <circle class="pie-fill" cx="45" cy="45" r="37"/>
+                </svg>
+                <div class="pie-center">
+                    <span class="pie-pct">
+                        <span class="pie-pct-sign"></span>
+                        <span id="pieNum">0</span>
+                        <span class="pie-pct-sign suffix"></span>
+                    </span>
+                </div>
+            </div>
+            <p class="stat-desc"></p>
+        </div>
+
+        <!-- CARD 2: cyan counter -->
+        <div class="stat-card c-cyan">
+            <span class="stat-label"></span>
+            <div class="counter-display">
+                <span class="counter-num" id="counterNum">0</span>
+                <span class="counter-plus"></span>
+            </div>
+            <p class="stat-desc"></p>
+        </div>
+
+        <!-- CARD 3: purple dot grid -->
+        <div class="stat-card c-purple">
+            <span class="stat-label"></span>
+            <div style="display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;justify-content:center;">
+                <div class="dot-big-num" id="dotBigNum">0</div>
+                <div class="dot-grid" id="dotGrid"></div>
+            </div>
+            <p class="stat-desc"></p>
+        </div>
+
+        <!-- CARD 4: amber bar chart -->
+        <div class="stat-card c-amber">
+            <span class="stat-label"></span>
+            <div style="display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;justify-content:center;width:100%;">
+                <div class="bar-big-num" id="barBigNum">0</div>
+                <div class="bar-chart" id="barChart"></div>
+            </div>
+            <p class="stat-desc"></p>
+        </div>
+    </div>
+</section>
+
+<script>
+    (function() {
+        // ============================================================
+        // 1. CONFIGURATION – replace with your published Google Sheet CSV url
+        // ============================================================
+        const SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQwT6qJqYxWJkX7cD8zM5sL3f2h1g9k0j4n7m2b5v8c1x9z6w4r7t0y3u8p2a5s/pub?output=csv'; // <-- PASTE YOUR URL HERE
+
+        // Default values in case sheet can't be loaded
+        const DEFAULTS = {
+            eyebrow: 'Our Impact · 2024–2025',
+            heading_before: 'Shaping Bristol\'s',
+            heading_em: 'Future Talent',
+            heading_after: '',
+            card1_label: 'Student Experience',
+            card1_desc: 'of students found work experience engaging and influential in their future planning',
+            card1_number: '93',
+            card1_suffix: '%',
+            card2_label: 'Students Supported',
+            card2_desc: 'students supported across Bristol from 2024 to 2025',
+            card2_number: '1000',
+            card2_suffix: '+',
+            card3_label: 'Partner Organisations',
+            card3_desc: 'organisations from Bristol and the surrounding regions support the partnership',
+            card3_number: '30',
+            card3_suffix: '',
+            card4_label: 'Elevate Programme',
+            card4_desc: 'schools, colleges, and universities participate in the Elevate Programme',
+            card4_number: '14',
+            card4_suffix: ''
+        };
+
+        // Data storage
+        let sheetData = { ...DEFAULTS };
+        let dataLoaded = false;
+        let animated = false;
+
+        // DOM elements
+        const section = document.getElementById('statsSection');
+        const eyebrowEl = document.querySelector('.stats-eyebrow');
+        const headingBefore = document.querySelector('.heading-before');
+        const headingEm = document.querySelector('.heading-em');
+        const headingAfter = document.querySelector('.heading-after');
+        const cardLabels = document.querySelectorAll('.stat-card .stat-label');
+        const cardDescs = document.querySelectorAll('.stat-card .stat-desc');
+        const pieNumSpan = document.getElementById('pieNum');
+        const pieSuffix = document.querySelector('.pie-pct .suffix');
+        const counterNumSpan = document.getElementById('counterNum');
+        const counterPlus = document.querySelector('.counter-plus');
+        const dotBigNum = document.getElementById('dotBigNum');
+        const dotGrid = document.getElementById('dotGrid');
+        const barBigNum = document.getElementById('barBigNum');
+        const barChart = document.getElementById('barChart');
+        const pieFill = document.querySelector('.pie-fill');
+
+        // ============================================================
+        // 2. CSV PARSER – skips first two rows, headers at row 3 (index 2)
+        // ============================================================
+        function parseCSV(text) {
+            const lines = text.trim().split(/\r?\n/);
+            if (lines.length < 3) return {}; // need at least header row
+
+            // Headers are on row 3 (index 2)
+            const headerLine = lines[2];
+            const headers = parseCSVRow(headerLine).map(h => h.trim());
+
+            const data = {};
+            for (let i = 3; i < lines.length; i++) {
+                const row = parseCSVRow(lines[i]);
+                if (row.every(v => !v.trim())) continue; // skip empty rows
+                const key = row[0] ? row[0].trim() : '';
+                const value = row[1] ? row[1].trim() : '';
+                if (key) data[key] = value;
+            }
+            return data;
+        }
+
+        function parseCSVRow(line) {
+            const result = [];
+            let current = '';
+            let inQuotes = false;
+            for (let i = 0; i < line.length; i++) {
+                const ch = line[i];
+                if (ch === '"') {
+                    if (inQuotes && line[i + 1] === '"') { current += '"'; i++; }
+                    else { inQuotes = !inQuotes; }
+                } else if (ch === ',' && !inQuotes) {
+                    result.push(current); current = '';
+                } else {
+                    current += ch;
+                }
+            }
+            result.push(current);
+            return result;
+        }
+
+        // ============================================================
+        // 3. Fetch data from Google Sheet
+        // ============================================================
+        async function fetchSheetData() {
+            try {
+                const response = await fetch(SHEET_CSV_URL);
+                if (!response.ok) throw new Error('Network response was not ok');
+                const csv = await response.text();
+                const parsed = parseCSV(csv);
+                // merge with defaults (sheet overrides)
+                sheetData = { ...DEFAULTS, ...parsed };
+            } catch (error) {
+                console.warn('Using default data (sheet fetch failed):', error);
+                sheetData = { ...DEFAULTS };
+            }
+            dataLoaded = true;
+            applyDataToDOM();
+            setupObserver(); // now safe to observe
+        }
+
+        // ============================================================
+        // 4. Populate DOM with sheet data
+        // ============================================================
+        function applyDataToDOM() {
+            // Eyebrow & heading
+            eyebrowEl.textContent = sheetData.eyebrow || '';
+            headingBefore.textContent = sheetData.heading_before || '';
+            headingEm.textContent = sheetData.heading_em || '';
+            headingAfter.textContent = sheetData.heading_after || '';
+
+            // Card 1
+            if (cardLabels[0]) cardLabels[0].textContent = sheetData.card1_label || '';
+            if (cardDescs[0]) cardDescs[0].textContent = sheetData.card1_desc || '';
+            pieSuffix.textContent = sheetData.card1_suffix || '';
+
+            // Card 2
+            if (cardLabels[1]) cardLabels[1].textContent = sheetData.card2_label || '';
+            if (cardDescs[1]) cardDescs[1].textContent = sheetData.card2_desc || '';
+            counterPlus.textContent = sheetData.card2_suffix || '';
+
+            // Card 3
+            if (cardLabels[2]) cardLabels[2].textContent = sheetData.card3_label || '';
+            if (cardDescs[2]) cardDescs[2].textContent = sheetData.card3_desc || '';
+            dotBigNum.textContent = sheetData.card3_number || '0';
+
+            // Card 4
+            if (cardLabels[3]) cardLabels[3].textContent = sheetData.card4_label || '';
+            if (cardDescs[3]) cardDescs[3].textContent = sheetData.card4_desc || '';
+            barBigNum.textContent = sheetData.card4_number || '0';
+
+            // Rebuild dot grid based on card3_number
+            const dotCount = parseInt(sheetData.card3_number, 10) || 30;
+            dotGrid.innerHTML = '';
+            for (let i = 0; i < dotCount; i++) {
+                const d = document.createElement('div');
+                d.className = 'dot-grid-dot';
+                dotGrid.appendChild(d);
+            }
+
+            // Bar chart (static, but we ensure it exists)
+            if (barChart.children.length === 0) {
+                const barTypes = ['🏫','🎓','🏛️','🎓','🏫','🏛️','🎓'];
+                const barWidths = [100, 86, 72, 64, 50, 43, 36];
+                barTypes.forEach((icon, i) => {
+                    const row = document.createElement('div');
+                    row.className = 'bar-row';
+                    row.innerHTML = `<span class="bar-icon">${icon}</span><div class="bar-track"><div class="bar-fill" data-w="${barWidths[i]}"></div></div>`;
+                    barChart.appendChild(row);
+                });
+            }
+        }
+
+        // ============================================================
+        // 5. Animation triggers (use sheet numbers)
+        // ============================================================
+        function easeOut(t) { return 1 - Math.pow(1 - t, 3); }
+
+        function animatePieNum(el, target, duration) {
+            const start = performance.now();
+            function tick(now) {
+                const t = Math.min((now - start) / duration, 1);
+                el.textContent = Math.round(easeOut(t) * target);
+                if (t < 1) requestAnimationFrame(tick);
+            }
+            requestAnimationFrame(tick);
+        }
+
+        function animateCounter(el, target, duration) {
+            const start = performance.now();
+            function tick(now) {
+                const t = Math.min((now - start) / duration, 1);
+                el.textContent = Math.round(easeOut(t) * target);
+                if (t < 1) requestAnimationFrame(tick);
+            }
+            requestAnimationFrame(tick);
+        }
+
+        function triggerAnimations() {
+            if (animated) return;
+            animated = true;
+            section.classList.add('visible');
+
+            const pieTarget = parseInt(sheetData.card1_number, 10) || 93;
+            const counterTarget = parseInt(sheetData.card2_number, 10) || 1000;
+            const dotCount = parseInt(sheetData.card3_number, 10) || 30;
+
+            // Pie fill offset: circumference ≈ 2 * π * 37 ≈ 232.5
+            const circumference = 2 * Math.PI * 37; // 232.5 approx
+            const offset = circumference * (1 - pieTarget / 100);
+            pieFill.style.strokeDashoffset = offset;
+
+            // Pie number
+            setTimeout(() => animatePieNum(pieNumSpan, pieTarget, 1500), 400);
+
+            // Counter
+            setTimeout(() => animateCounter(counterNumSpan, counterTarget, 1800), 500);
+
+            // Dots pop in staggered
+            const dots = dotGrid.querySelectorAll('.dot-grid-dot');
+            dots.forEach((dot, i) => {
+                setTimeout(() => {
+                    dot.style.transform = 'scale(1)';
+                    dot.classList.add('lit');
+                }, 200 + i * 48);
+            });
+
+            // Bars grow
+            setTimeout(() => {
+                document.querySelectorAll('.bar-fill').forEach((bar, i) => {
+                    setTimeout(() => {
+                        bar.style.width = bar.dataset.w + '%';
+                    }, i * 100);
+                });
+            }, 600);
+        }
+
+        // ============================================================
+        // 6. Intersection Observer – start animations when visible
+        // ============================================================
+        function setupObserver() {
+            const observer = new IntersectionObserver(entries => {
+                if (entries[0].isIntersecting) {
+                    triggerAnimations();
+                    observer.disconnect();
+                }
+            }, { threshold: 0.2 });
+            observer.observe(section);
+        }
+
+        // ============================================================
+        // 7. Initialise: fetch data, then set up observer
+        // ============================================================
+        fetchSheetData();
+    })();
+</script>
+</body>
+</html>
