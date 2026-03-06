@@ -117,7 +117,7 @@
 <div class="btn-card-dn">
   <span class="btn-eyebrow-dn">Give Today</span>
   <p class="btn-heading-dn">Make an <em>Impact</em></p>
-  <a class="gh-btn-link-dn" href="https://www.goodhub.com/go/offerings/bristol-future-talent-partnership-187747/donations/create" target="_blank" rel="noopener" aria-label="Donate Online with GoodHub">
+  <a id="donate-link" class="gh-btn-link-dn" href="#" target="_blank" rel="noopener" aria-label="Donate Online with GoodHub">
     <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 1749 607" width="200" height="70" style="display:block;">
       <defs>
         <linearGradient id="donate-gradient" x1="192.39" y1="687.87" x2="192.39" y2="686.87" gradientTransform="translate(-335616 417536) scale(1749 -607)" gradientUnits="userSpaceOnUse">
@@ -171,6 +171,57 @@
   </a>
   <p class="btn-desc-dn">Your donation directly supports young people across Bristol</p>
 </div>
+
+<script>
+  (function () {
+    const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRcBcWZLvNWGewjyn4J6kC4KP6MxYgrtxjH-pkT14239zIgg-5T9j2oL5ldJbXL8nTexTSI0kNSLuUc/pub?gid=1243002054&single=true&output=csv';
+    const FALLBACK = 'https://www.goodhub.com/go/offerings/bristol-future-talent-partnership-187747/donations/create';
+
+    function parseCSV(text) {
+      return text.split('\n').map(line => line.trim()).filter(Boolean);
+    }
+
+    function findLink(lines, cardKey) {
+      let headerIndex = -1;
+      let cardCol = -1;
+      let linkCol = -1;
+
+      for (let i = 0; i < lines.length; i++) {
+        const cols = lines[i].split(',').map(c => c.trim().toLowerCase().replace(/"/g, ''));
+        const cardIdx = cols.indexOf('card');
+        const linkIdx = cols.indexOf('link');
+        if (cardIdx !== -1 && linkIdx !== -1) {
+          headerIndex = i;
+          cardCol = cardIdx;
+          linkCol = linkIdx;
+          break;
+        }
+      }
+
+      if (headerIndex === -1) return null;
+
+      for (let i = headerIndex + 1; i < lines.length; i++) {
+        const cols = lines[i].match(/(".*?"|[^,]+)(?=,|$)/g) || lines[i].split(',');
+        const clean = cols.map(c => c.trim().replace(/^"|"$/g, ''));
+        if (clean[cardCol] && clean[cardCol].toLowerCase() === cardKey.toLowerCase()) {
+          return clean[linkCol] || null;
+        }
+      }
+      return null;
+    }
+
+    fetch(CSV_URL)
+            .then(r => r.text())
+            .then(text => {
+              const lines = parseCSV(text);
+              const url = findLink(lines, 'donate') || FALLBACK;
+              document.getElementById('donate-link').href = url;
+            })
+            .catch(() => {
+              document.getElementById('donate-link').href = FALLBACK;
+            });
+  })();
+</script>
 
 </body>
 </html>
