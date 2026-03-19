@@ -1,0 +1,69 @@
+<script>
+  (function() {
+    if (!document.getElementById('bftp-fonts')) {
+      const link = document.createElement('link');
+      link.id = 'bftp-fonts';
+      link.rel = 'stylesheet';
+      link.href = 'https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&family=Nunito+Sans:wght@400;600;700&display=swap';
+      document.head.appendChild(link);
+    }
+    const script = document.currentScript;
+    const host = document.createElement('div');
+    script.parentNode.insertBefore(host, script);
+    const shadow = host.attachShadow({ mode: 'open' });
+    shadow.innerHTML = `
+    <style>
+      :host { display: block; }
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      .card {
+        background: #fff; border-radius: 26px; padding: 1.95rem 1.625rem;
+        box-shadow: 0 2px 24px rgba(0,0,0,0.07), 0 0 0 1px rgba(0,0,0,0.07);
+        display: flex; flex-direction: column; align-items: center; text-align: center;
+        gap: 0.975rem; opacity: 0; transform: translateY(28px) scale(0.97);
+        transition: opacity 0.55s ease, transform 0.55s ease, box-shadow 0.2s ease;
+        position: relative; overflow: hidden; max-width: 338px; width: 100%;
+        font-family: 'Nunito Sans', sans-serif;
+      }
+      .card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 5px; border-radius: 26px 26px 0 0; background: #7b2fbe; }
+      .card.visible { opacity: 1; transform: translateY(0) scale(1); }
+      .card:hover { box-shadow: 0 8px 40px rgba(0,0,0,0.12); transform: translateY(-3px) scale(1) !important; }
+      .label { font-family: 'Nunito', sans-serif; font-weight: 700; font-size: 0.885rem; text-transform: uppercase; letter-spacing: 0.13em; padding: 0.36em 1.17em; border-radius: 100px; background: #ede4f8; color: #7b2fbe; }
+      .desc { font-size: 1.04rem; line-height: 1.65; color: #6b7a99; max-width: 18ch; font-family: 'Nunito Sans', sans-serif; }
+      .inner { display: flex; align-items: center; gap: 1.625rem; flex-wrap: wrap; justify-content: center; }
+      .big-num { font-family: 'Nunito', sans-serif; font-weight: 900; font-size: 3.64rem; letter-spacing: -0.04em; color: #7b2fbe; line-height: 1; }
+      .dot-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; padding: 0.1rem; }
+      .dot { width: 15px; height: 15px; border-radius: 50%; background: #ede4f8; transition: background 0.3s ease, transform 0.3s ease; transform: scale(0); }
+      .dot.lit { background: #7b2fbe; }
+    </style>
+    <div class="card">
+      <span class="label" id="label"></span>
+      <div class="inner">
+        <div class="big-num" id="bigNum"></div>
+        <div class="dot-grid" id="dotGrid"></div>
+      </div>
+      <p class="desc" id="desc"></p>
+    </div>`;
+    const SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRcBcWZLvNWGewjyn4J6kC4KP6MxYgrtxjH-pkT14239zIgg-5T9j2oL5ldJbXL8nTexTSI0kNSLuUc/pub?gid=1906984062&single=true&output=csv';
+    const DEFAULTS = { card3_label:'Partner Organisations', card3_desc:'organisations from Bristol and the surrounding regions support the partnership', card3_number:'30', card3_suffix:'' };
+    const card = shadow.querySelector('.card');
+    const labelEl = shadow.getElementById('label');
+    const descEl = shadow.getElementById('desc');
+    const bigNumEl = shadow.getElementById('bigNum');
+    const dotGrid = shadow.getElementById('dotGrid');
+    let sheetData = {...DEFAULTS}, animated = false;
+    function parseCSVRow(line) { const r=[]; let c='', q=false; for(let i=0;i<line.length;i++){const ch=line[i];if(ch==='"'){if(q&&line[i+1]==='"'){c+='"';i++;}else{q=!q;}}else if(ch===','&&!q){r.push(c);c='';}else{c+=ch;}}r.push(c);return r; }
+    function parseCSV(text) { const lines=text.trim().split(/\r?\n/);if(lines.length<3)return{};const data={};for(let i=3;i<lines.length;i++){const row=parseCSVRow(lines[i]);if(row.every(v=>!v.trim()))continue;const k=row[0]?row[0].trim():'';const v=row[1]?row[1].trim():'';if(k)data[k]=v;}return data; }
+    function applyAndAnimate() {
+      labelEl.textContent=sheetData.card3_label||''; descEl.textContent=sheetData.card3_desc||'';
+      const count=parseInt(sheetData.card3_number,10)||30;
+      bigNumEl.textContent=count;
+      dotGrid.innerHTML='';
+      for(let i=0;i<count;i++){const d=document.createElement('div');d.className='dot';dotGrid.appendChild(d);}
+      card.classList.add('visible');
+      dotGrid.querySelectorAll('.dot').forEach((dot,i)=>{setTimeout(()=>{dot.style.transform='scale(1)';dot.classList.add('lit');},200+i*48);});
+    }
+    async function fetchAndRender() { try{const res=await fetch(SHEET_CSV_URL);if(!res.ok)throw new Error();sheetData={...DEFAULTS,...parseCSV(await res.text())};}catch(e){} applyAndAnimate(); }
+    const obs=new IntersectionObserver(entries=>{if(entries[0].isIntersecting&&!animated){animated=true;obs.disconnect();fetchAndRender();}},{threshold:0.2});
+    obs.observe(host);
+  })();
+</script>

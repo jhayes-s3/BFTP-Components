@@ -1,0 +1,80 @@
+<script>
+    (function() {
+        if (!document.getElementById('bftp-fonts')) {
+            const link = document.createElement('link');
+            link.id = 'bftp-fonts';
+            link.rel = 'stylesheet';
+            link.href = 'https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&family=Nunito+Sans:wght@400;600;700&display=swap';
+            document.head.appendChild(link);
+        }
+        const script = document.currentScript;
+        const host = document.createElement('div');
+        script.parentNode.insertBefore(host, script);
+        const shadow = host.attachShadow({ mode: 'open' });
+        shadow.innerHTML = `
+    <style>
+      :host { display: block; }
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      .card {
+        background: #fff; border-radius: 26px; padding: 1.95rem 1.625rem;
+        box-shadow: 0 2px 24px rgba(0,0,0,0.07), 0 0 0 1px rgba(0,0,0,0.07);
+        display: flex; flex-direction: column; align-items: center; text-align: center;
+        gap: 0.975rem; opacity: 0; transform: translateY(28px) scale(0.97);
+        transition: opacity 0.55s ease, transform 0.55s ease, box-shadow 0.2s ease;
+        position: relative; overflow: hidden; max-width: 338px; width: 100%;
+        font-family: 'Nunito Sans', sans-serif;
+      }
+      .card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 5px; border-radius: 26px 26px 0 0; background: #e4007c; }
+      .card.visible { opacity: 1; transform: translateY(0) scale(1); }
+      .card:hover { box-shadow: 0 8px 40px rgba(0,0,0,0.12); transform: translateY(-3px) scale(1) !important; }
+      .label { font-family: 'Nunito', sans-serif; font-weight: 700; font-size: 0.885rem; text-transform: uppercase; letter-spacing: 0.13em; padding: 0.36em 1.17em; border-radius: 100px; background: #fce4f1; color: #e4007c; }
+      .desc { font-size: 1.04rem; line-height: 1.65; color: #6b7a99; max-width: 18ch; font-family: 'Nunito Sans', sans-serif; }
+      .pie-wrap { position: relative; width: 117px; height: 117px; }
+      .pie-svg { width: 117px; height: 117px; transform: rotate(-90deg); }
+      .pie-track { fill: none; stroke: #f0e4f7; stroke-width: 18; }
+      .pie-fill { fill: none; stroke: #e4007c; stroke-width: 18; stroke-linecap: round; stroke-dasharray: 302.4; stroke-dashoffset: 302.4; transition: stroke-dashoffset 1.6s cubic-bezier(0.22,1,0.36,1) 0.3s; }
+      .pie-center { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
+      .pie-num { font-family: 'Nunito', sans-serif; font-weight: 900; font-size: 1.82rem; line-height: 1; color: #e4007c; letter-spacing: -0.03em; }
+      .pie-suffix { font-size: 1.3rem; vertical-align: super; }
+    </style>
+    <div class="card">
+      <span class="label" id="label"></span>
+      <div class="pie-wrap">
+        <svg class="pie-svg" viewBox="0 0 117 117">
+          <circle class="pie-track" cx="58.5" cy="58.5" r="48.1"/>
+          <circle class="pie-fill" id="pieFill" cx="58.5" cy="58.5" r="48.1"/>
+        </svg>
+        <div class="pie-center">
+          <span class="pie-num"><span id="pieNum">0</span><span class="pie-suffix" id="pieSuffix"></span></span>
+        </div>
+      </div>
+      <p class="desc" id="desc"></p>
+    </div>`;
+        const SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRcBcWZLvNWGewjyn4J6kC4KP6MxYgrtxjH-pkT14239zIgg-5T9j2oL5ldJbXL8nTexTSI0kNSLuUc/pub?gid=1906984062&single=true&output=csv';
+        const DEFAULTS = { card1_label:'Student Experience', card1_desc:'of students found work experience engaging and influential in their future planning', card1_number:'93', card1_suffix:'%' };
+        const card = shadow.querySelector('.card');
+        const labelEl = shadow.getElementById('label');
+        const descEl = shadow.getElementById('desc');
+        const pieNumEl = shadow.getElementById('pieNum');
+        const pieSuffixEl = shadow.getElementById('pieSuffix');
+        const pieFill = shadow.getElementById('pieFill');
+        let sheetData = {...DEFAULTS}, animated = false;
+        function parseCSVRow(line) { const r=[]; let c='', q=false; for(let i=0;i<line.length;i++){const ch=line[i];if(ch==='"'){if(q&&line[i+1]==='"'){c+='"';i++;}else{q=!q;}}else if(ch===','&&!q){r.push(c);c='';}else{c+=ch;}}r.push(c);return r; }
+        function parseCSV(text) { const lines=text.trim().split(/\r?\n/);if(lines.length<3)return{};const data={};for(let i=3;i<lines.length;i++){const row=parseCSVRow(lines[i]);if(row.every(v=>!v.trim()))continue;const k=row[0]?row[0].trim():'';const v=row[1]?row[1].trim():'';if(k)data[k]=v;}return data; }
+        function easeOut(t){return 1-Math.pow(1-t,3);}
+        function animateNum(el,target,dur){const s=performance.now();(function tick(now){const t=Math.min((now-s)/dur,1);el.textContent=Math.round(easeOut(t)*target);if(t<1)requestAnimationFrame(tick);})(performance.now());}
+        function applyAndAnimate() {
+            labelEl.textContent=sheetData.card1_label||''; descEl.textContent=sheetData.card1_desc||''; pieSuffixEl.textContent=sheetData.card1_suffix||'';
+            const target=parseInt(sheetData.card1_number,10)||93;
+            const circumference = 2*Math.PI*48.1;
+            pieFill.style.strokeDasharray = circumference;
+            pieFill.style.strokeDashoffset = circumference;
+            setTimeout(() => { pieFill.style.strokeDashoffset = circumference*(1-target/100); }, 50);
+            card.classList.add('visible');
+            setTimeout(()=>animateNum(pieNumEl,target,1500),400);
+        }
+        async function fetchAndRender() { try{const res=await fetch(SHEET_CSV_URL);if(!res.ok)throw new Error();sheetData={...DEFAULTS,...parseCSV(await res.text())};}catch(e){} applyAndAnimate(); }
+        const obs=new IntersectionObserver(entries=>{if(entries[0].isIntersecting&&!animated){animated=true;obs.disconnect();fetchAndRender();}},{threshold:0.2});
+        obs.observe(host);
+    })();
+</script>
