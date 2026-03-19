@@ -44,6 +44,18 @@
             flex-wrap: wrap;
         }
 
+        /* White pill container wrapping just the legend content */
+        .legend-inner {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.6rem 1.2rem;
+            flex-wrap: wrap;
+            background: white;
+            border-radius: 100px;
+            padding: 0.55rem 1.4rem;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.10), 0 0 0 1px rgba(0,0,0,0.06);
+        }
+
         .legend-label {
             font-family: 'Nunito', sans-serif;
             font-size: 0.7rem;
@@ -136,6 +148,7 @@
             .map-section { padding: 1rem 0 0.5rem; }
             #mapCanvas { border-radius: 0; }
             .legend-bar { justify-content: center; gap: 0.6rem; padding: 0.75rem 1rem; }
+            .legend-inner { border-radius: 16px; padding: 0.6rem 1rem; gap: 0.5rem; }
             .legend-item { font-size: 0.7rem; }
             .hint-bar { flex-direction: column; gap: 0.4rem; text-align: center; }
         }
@@ -155,6 +168,7 @@
         }
         #mapCanvas:active { cursor: grabbing; }
 
+        /* ── HINT BAR ── */
         .hint-bar {
             display: flex;
             align-items: center;
@@ -167,6 +181,17 @@
         }
         .hint-bar span { display: flex; align-items: center; gap: 0.35rem; }
         .hint-bar svg { opacity: 0.5; }
+
+        /* White rounded card wrapping the hint bar content */
+        .hint-inner {
+            display: inline-flex;
+            align-items: center;
+            gap: 1.5rem;
+            background: white;
+            border-radius: 100px;
+            padding: 0.5rem 1.4rem;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.05);
+        }
 
         /* ── LAST UPDATED BADGE ── */
         .last-updated {
@@ -310,12 +335,14 @@
 
 <!-- LEGEND -->
 <div class="legend-bar">
-    <span class="legend-label">Tier:</span>
-    <div class="legend-item"><div class="legend-pip" style="background:#e4007c"></div>Entry Point</div>
-    <div class="legend-item"><div class="legend-pip" style="background:#00b5d8"></div>Foundation</div>
-    <div class="legend-item"><div class="legend-pip" style="background:#7b2fbe"></div>Intermediate</div>
-    <div class="legend-item"><div class="legend-pip" style="background:#e8a000"></div>Advanced</div>
-    <div class="legend-item"><div class="legend-pip" style="background:#0d1b2e"></div>Leadership</div>
+    <div class="legend-inner">
+        <span class="legend-label">Tier:</span>
+        <div class="legend-item"><div class="legend-pip" style="background:#e4007c"></div>Entry Point</div>
+        <div class="legend-item"><div class="legend-pip" style="background:#00b5d8"></div>Foundation</div>
+        <div class="legend-item"><div class="legend-pip" style="background:#7b2fbe"></div>Intermediate</div>
+        <div class="legend-item"><div class="legend-pip" style="background:#e8a000"></div>Advanced</div>
+        <div class="legend-item"><div class="legend-pip" style="background:#0d1b2e"></div>Leadership</div>
+    </div>
 </div>
 
 <!-- MAP -->
@@ -342,18 +369,20 @@
     <div class="last-updated" id="lastUpdated"></div>
 
     <div class="hint-bar">
-        <span>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-            Click a node to explore
-        </span>
-        <span>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 9l-3 3 3 3M9 5l3-3 3 3M15 19l-3 3-3-3M19 9l3 3-3 3"/></svg>
-            Drag to pan
-        </span>
-        <span>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
-            Scroll to zoom
-        </span>
+        <div class="hint-inner">
+            <span>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                Click a node to explore
+            </span>
+            <span>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 9l-3 3 3 3M9 5l3-3 3 3M15 19l-3 3-3-3M19 9l3 3-3 3"/></svg>
+                Drag to pan
+            </span>
+            <span>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+                Scroll to zoom
+            </span>
+        </div>
     </div>
 </div>
 
@@ -427,24 +456,19 @@
     let loadedAt = null;
 
     // ─── CSV PARSER ──────────────────────────────────────────────────────────────
-    // Handles quoted fields with commas inside them.
-    // Scans for the real header row (the one containing 'id') so it works even
-    // when banner/instruction rows sit above the data, as in the formatted sheet.
     function parseCSV(text) {
         const lines = text.trim().split('\n');
         if (lines.length < 2) return [];
 
-        // Normalise a header string: lowercase, strip whitespace & BOM
         const normalise = s => s.replace(/^\uFEFF/, '').trim().toLowerCase();
 
-        // Headers are on row 3 (index 2) — rows 1 and 2 are the banner/instruction strip
         const headerLineIndex = 2;
         const headers = parseCSVRow(lines[headerLineIndex]).map(normalise);
 
         const rows = [];
         for (let i = headerLineIndex + 1; i < lines.length; i++) {
             const vals = parseCSVRow(lines[i]);
-            if (vals.every(v => !v.trim())) continue; // skip blank rows
+            if (vals.every(v => !v.trim())) continue;
             const obj = {};
             headers.forEach((h, idx) => { obj[h] = (vals[idx] || '').trim(); });
             rows.push(obj);
@@ -471,18 +495,11 @@
         return result;
     }
 
-    // ─── BUILD NODES FROM CSV ROWS ───────────────────────────────────────────────
-    // Expected columns (case-insensitive):
-    //   id, label, tier, level, description, connections
-    //
-    // "connections" is a space- or semicolon-separated list of node IDs,
-    // e.g.  "n2 n3 n4"  or  "n2;n3;n4"
     function buildNodes(rows) {
         return rows
             .filter(r => r.id && r.label && r.tier)
             .map(r => {
                 const tierKey = r.tier.toLowerCase().replace(/\s+/g, '');
-                // Normalise common variations
                 const tierMap = {
                     'entrypoint': 'entry', 'entry': 'entry',
                     'foundation': 'foundation',
@@ -500,7 +517,7 @@
 
                 return {
                     id: r.id.trim(),
-                    label: r.label.replace(/\\n/g, '\n'),  // allow literal \n in sheet
+                    label: r.label.replace(/\\n/g, '\n'),
                     tier,
                     level: r.level || '',
                     desc: r.description || r.desc || '',
@@ -508,7 +525,6 @@
                 };
             });
     }
-
 
     function buildEdges(nodes) {
         const nm = new Map(nodes.map(n => [n.id, n]));
@@ -525,36 +541,27 @@
         });
         return result;
     }
-    
-    
-    // ─── AUTO LAYOUT ─────────────────────────────────────────────────────────────
-    // Slots each node into its tier column and spaces them evenly vertically.
-    // Returns positions as fractional coordinates {x, y} in [0,1].
+
     function autoLayout(nodes) {
         const byTier = {};
         TIER_ORDER.forEach(t => { byTier[t] = []; });
         nodes.forEach(n => {
             if (byTier[n.tier]) byTier[n.tier].push(n.id);
-            else byTier['foundation'].push(n.id); // fallback
+            else byTier['foundation'].push(n.id);
         });
 
         const pos = {};
 
-        // Fixed gap between nodes as a fraction of canvas height.
-        // Nodes are grouped together and centred vertically — so a column
-        // with 2 nodes sits neatly in the middle rather than top and bottom.
-        const NODE_GAP = 0.11;      // gap between node centres
-        const TOP_LABEL = 0.08;     // headroom for the column label
-        const CENTRE = 0.52;        // vertical centre point (slightly below midpoint looks better)
+        const NODE_GAP = 0.11;
+        const TOP_LABEL = 0.08;
+        const CENTRE = 0.52;
 
         TIER_ORDER.forEach(tier => {
             const ids = byTier[tier];
             const fx  = TIER_FX[tier];
             const count = ids.length;
 
-            // Total height of the group
             const groupHeight = (count - 1) * NODE_GAP;
-            // Top of the group, clamped so it never goes above the label area
             const groupTop = Math.max(TOP_LABEL, CENTRE - groupHeight / 2);
 
             ids.forEach((id, i) => {
@@ -593,7 +600,6 @@
             positions = autoLayout(nodes);
             edges = buildEdges(nodes);
             loadedAt = new Date();
-            
 
             initParticles();
             showState('map');
@@ -666,7 +672,6 @@
         canvas.style.height = H + 'px';
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-        // Set the state overlay to match canvas height
         document.getElementById('loadingState').style.height = H + 'px';
         document.getElementById('errorState').style.height   = H + 'px';
 
@@ -675,7 +680,6 @@
             offsetX = W / 2 - 0.475 * W * MOBILE_VW;
             offsetY = 30 - 0.12 * H * MOBILE_VH;
         } else {
-            // Reset to default view on resize
             scale = 1;
             offsetX = 0;
             offsetY = 0;
@@ -739,7 +743,6 @@
         // Edges
         const nodeMap = new Map(nodes.map(n => [n.id, n]));
 
-// Edges
         edges.forEach(e => {
             const nFrom = nodeMap.get(e.from), nTo = nodeMap.get(e.to);
             if (!nFrom || !nTo) return;
@@ -780,7 +783,7 @@
         // Nodes
         nodes.forEach(n => {
             const { x, y } = nodeXY(n.id);
-            if (x < -50 || x > W + 50 || y < -50 || y > H + 50) return; // skip off-screen
+            if (x < -50 || x > W + 50 || y < -50 || y > H + 50) return;
             const r = RADII[n.tier] * Math.max(0.55, scale);
             const color = TIER_COLORS[n.tier];
             const isHovered   = hoveredNode?.id === n.id;
